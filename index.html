@@ -60,11 +60,12 @@
             gap: 10px;
             justify-content: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
         .mode-btn {
-            padding: 10px 20px;
-            font-size: 14px;
+            padding: 10px 16px;
+            font-size: 13px;
             font-weight: bold;
             border: 2px solid var(--primary);
             background: transparent;
@@ -188,10 +189,11 @@
         }
 
         .question-text {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
             margin: 0;
             color: #fff;
+            line-height: 1.4;
         }
 
         .options-grid {
@@ -209,7 +211,7 @@
             background: #1e293b;
             border: 2px solid #475569;
             padding: 14px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             border-radius: 12px;
             cursor: pointer;
@@ -309,6 +311,7 @@
         <div class="mode-container">
             <button class="mode-btn active" id="mode-addsub" onclick="switchMode('addsub')">同類項加減法</button>
             <button class="mode-btn" id="mode-dist" onclick="switchMode('distributive')">乘法分配律</button>
+            <button class="mode-btn" id="mode-foil" onclick="switchMode('foil')">雙項式乘法 (FOIL)</button>
         </div>
 
         <div class="battle-stage">
@@ -402,9 +405,8 @@
     let answered = false;
     let currentQuestionData = {};
 
-    // 輔助函數：隨機整數
     function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-    // 輔助函數：帶符號的數字字串 (例如 +3x 或 -5)
+
     function formatTerm(val, variable, isFirst) {
         if (val === 0) return "";
         let sign = val > 0 ? "+" : "-";
@@ -414,7 +416,24 @@
         return `${sign}${numStr}${variable}`;
     }
 
-    // ⭐ 核心功能：動態生成隨機題目
+    function formatBinomial(coef, constant, varName) {
+        let part1 = "";
+        if (coef === 1) part1 = varName;
+        else if (coef === -1) part1 = "-" + varName;
+        else part1 = coef + varName;
+
+        let part2 = constant > 0 ? " + " + constant : " - " + Math.abs(constant);
+        return `(${part1}${part2})`;
+    }
+
+    function formatTrinomial(cx2, cx, cc) {
+        let part1 = formatTerm(cx2, 'x²', true);
+        let part2 = formatTerm(cx, 'x', part1 === "");
+        let part3 = formatTerm(cc, '', (part1 === "" && part2 === ""));
+        return (part1 + " " + part2 + " " + part3).trim().replace(/\s+/g, ' ');
+    }
+
+    // ⭐ 動態題目生成器 (支援三種模式)
     function generateRandomQuestion(mode) {
         let qText = "";
         let answerStr = "";
@@ -422,7 +441,6 @@
         let wrongAnswers = new Set();
 
         if (mode === 'addsub') {
-            // 隨機決定是 x,y 組合還是 x²,x 組合
             const type = Math.random() > 0.5 ? 'xy' : 'x2x';
             const var1 = type === 'xy' ? 'x' : 'x²';
             const var2 = type === 'xy' ? 'y' : 'x';
@@ -433,16 +451,13 @@
             while(a2 === 0) a2 = randInt(-8, 8);
             while(b2 === 0) b2 = randInt(-8, 8);
 
-            // 隨機排列四個項的展示順序
             const terms = [
                 { val: a1, v: var1 }, { val: b1, v: var2 },
                 { val: a2, v: var1 }, { val: b2, v: var2 }
             ].sort(() => Math.random() - 0.5);
 
             qText = "化簡：";
-            terms.forEach((t, idx) => {
-                qText += formatTerm(t.val, t.v, idx === 0) + " ";
-            });
+            terms.forEach((t, idx) => { qText += formatTerm(t.val, t.v, idx === 0) + " "; });
 
             const correctVar1 = a1 + a2;
             const correctVar2 = b1 + b2;
@@ -456,11 +471,10 @@
 
             answerStr = buildAns(correctVar1, correctVar2);
 
-            // 生成錯誤干擾項
             while(wrongAnswers.size < 3) {
                 let w1 = correctVar1 + randInt(-3, 3);
                 let w2 = correctVar2 + randInt(-3, 3);
-                let comboErr = Math.random() > 0.7; // 模擬同類項混淆錯誤 (例如全部加在一起)
+                let comboErr = Math.random() > 0.7;
                 let wStr = comboErr ? formatTerm(correctVar1 + correctVar2 + randInt(-2,2), var1==='x²'?'x³':var1, true) : buildAns(w1, w2);
                 if (wStr !== answerStr && wStr !== "" && wStr !== "0") wrongAnswers.add(wStr);
             }
@@ -470,11 +484,9 @@
                           `• <b>${var2} 的項：</b> ${formatTerm(b1, var2, true)} ${formatTerm(b2, var2, false)} = <b>${formatTerm(correctVar2, var2, true) || '0'}</b><br>` +
                           `兩者為不同類項，不能再度相加！最終答案為：<b>${answerStr}</b>`;
 
-        } else {
-            // 乘法分配律
-            // 隨機生成形式：A(Bx + C) 或 A(Bx - C)
+        } else if (mode === 'distributive') {
             let A = 0, B = 0, C = 0;
-            while(A === 0 || Math.abs(A) === 1) A = randInt(-5, 5); // 避免外面是 1 或 0 沒難度
+            while(A === 0 || Math.abs(A) === 1) A = randInt(-5, 5);
             while(B === 0) B = randInt(-4, 4);
             while(C === 0) C = randInt(-8, 8);
 
@@ -492,9 +504,8 @@
 
             answerStr = buildDistAns(ansX, ansConst);
 
-            // 經典錯誤生成
-            wrongAnswers.add(buildDistAns(ansX, C)); // 忘記乘後面
-            wrongAnswers.add(buildDistAns(ansX, -ansConst)); // 後面正負號弄錯
+            wrongAnswers.add(buildDistAns(ansX, C)); 
+            wrongAnswers.add(buildDistAns(ansX, -ansConst)); 
             while(wrongAnswers.size < 3) {
                 let wX = ansX + randInt(-2, 2);
                 let wC = ansConst + randInt(-4, 4);
@@ -502,13 +513,51 @@
                 if(wStr !== answerStr && wStr !== "") wrongAnswers.add(wStr);
             }
 
-            explainHtml = `<b>魔法解析：</b>根據分配律，括號外的數 <b>${A}</b> 必須分別乘以括號內的每一項！<br>` +
+            explainHtml = `<b>魔法解析：</b>根據分配律，外項 <b>${A}</b> 必須分別乘以括號內每一項！<br>` +
                           `• 第一項：${A} × (${B}x) = <b>${ansX}x</b><br>` +
-                          `• 第二項：${A} × (${C}) = <b>${ansConst > 0 ? '+' : ''}${ansConst}</b> (注意負負得正或正負得負)<br>` +
+                          `• 第二項：${A} × (${C}) = <b>${ansConst > 0 ? '+' : ''}${ansConst}</b><br>` +
                           `展開後最終答案為：<b>${answerStr}</b>`;
+        } else {
+            // ⭐ 【雙項式乘法 (FOIL Mode)】
+            let A = 0, B = 0, C = 0, D = 0;
+            while(A === 0) A = randInt(-4, 4);
+            while(B === 0) B = randInt(-5, 5);
+            while(C === 0) C = randInt(-4, 4);
+            while(D === 0) D = randInt(-5, 5);
+
+            qText = `展開並化簡：${formatBinomial(A, B, 'x')}${formatBinomial(C, D, 'x')}`;
+
+            const ansX2 = A * C;
+            const ansX = A * D + B * C;
+            const ansConst = B * D;
+
+            answerStr = formatTrinomial(ansX2, ansX, ansConst);
+
+            // 經典 FOIL 錯誤設置
+            wrongAnswers.add(formatTrinomial(ansX2, -(A * D + B * C), ansConst)); // 中間項正負號相反
+            wrongAnswers.add(formatTrinomial(ansX2, A * D - B * C, ansConst));    // 中間項算錯
+            wrongAnswers.add(formatTrinomial(ansX2, ansX, B + D));              // 常數相加而非相乘
+            wrongAnswers.add(formatTrinomial(ansX2, 0, ansConst));              // 漏掉中間項
+
+            while(wrongAnswers.size < 3) {
+                let wX2 = ansX2 + randInt(-2, 2); if(wX2 === 0) wX2 = 1;
+                let wX = ansX + randInt(-4, 4);
+                let wConst = ansConst + randInt(-4, 4);
+                let wStr = formatTrinomial(wX2, wX, wConst);
+                if(wStr !== answerStr && wStr !== "") wrongAnswers.add(wStr);
+            }
+
+            explainHtml = `<b>魔法解析：雙項式乘法 (FOIL 展開法)</b><br>` +
+                          `原式：${formatBinomial(A, B, 'x')}${formatBinomial(C, D, 'x')}<br>` +
+                          `• <b>First (首項相乘)：</b> ${formatTerm(A, 'x', true)} × ${formatTerm(C, 'x', true)} = <b>${formatTerm(ansX2, 'x²', true)}</b><br>` +
+                          `• <b>Outer (外項相乘)：</b> ${formatTerm(A, 'x', true)} × (${D}) = <b>${formatTerm(A*D, 'x', true)}</b><br>` +
+                          `• <b>Inner (內項相乘)：</b> (${B}) × ${formatTerm(C, 'x', true)} = <b>${formatTerm(B*C, 'x', true)}</b><br>` +
+                          `• <b>Last (末項相乘)：</b> (${B}) × (${D}) = <b>${formatTerm(ansConst, '', true)}</b><br>` +
+                          `合併同類項（外項 + 內項）：<br>` +
+                          `${formatTerm(A*D, 'x', true)} ${formatTerm(B*C, 'x', false)} = <b>${formatTerm(ansX, 'x', true) || '0'}</b><br>` +
+                          `最終答案：<b>${answerStr}</b>`;
         }
 
-        // 混淆選項順序
         let allOptions = Array.from(wrongAnswers);
         allOptions.push(answerStr);
         allOptions.sort(() => Math.random() - 0.5);
@@ -532,15 +581,24 @@
         document.getElementById('player-hp').style.backgroundColor = 'var(--success)';
         document.getElementById('enemy-hp').style.backgroundColor = 'var(--success)';
 
-        const isAddSub = currentMode === 'addsub';
-        document.getElementById('enemy-name').innerText = isAddSub ? "同類項史萊姆" : "分配律炎魔";
-        document.getElementById('enemy-avatar').innerText = isAddSub ? "👾" : "👹";
+        let monsterName = "同類項史萊姆";
+        let monsterAvatar = "👾";
+        if (currentMode === 'distributive') {
+            monsterName = "分配律炎魔";
+            monsterAvatar = "👹";
+        } else if (currentMode === 'foil') {
+            monsterName = "雙項式奇美拉";
+            monsterAvatar = "🦁";
+        }
+
+        document.getElementById('enemy-name').innerText = monsterName;
+        document.getElementById('enemy-avatar').innerText = monsterAvatar;
 
         document.getElementById('game-lobby').style.display = 'block';
         document.getElementById('result-screen').style.display = 'none';
         document.getElementById('next-btn').style.display = 'none';
         document.getElementById('feedback-box').style.display = 'none';
-        document.getElementById('battle-log').innerText = "生死對決開始！回答正確才能削減魔物HP！";
+        document.getElementById('battle-log').innerText = "對決開始！使用最高階的代數法術擊敗奇美拉吧！";
 
         loadQuestion();
     }
@@ -550,6 +608,7 @@
         currentMode = mode;
         document.getElementById('mode-addsub').classList.toggle('active', mode === 'addsub');
         document.getElementById('mode-dist').classList.toggle('active', mode === 'distributive');
+        document.getElementById('mode-foil').classList.toggle('active', mode === 'foil');
         initGame();
     }
 
@@ -598,7 +657,6 @@
         const explanationText = document.getElementById('explanation-text');
         
         if (isCorrect) {
-            // 答對扣怪獸 25 HP
             enemyHP -= 25;
             if (enemyHP < 0) enemyHP = 0;
             updateHPBar('enemy-hp', enemyHP);
@@ -608,10 +666,9 @@
             setTimeout(() => playSound('correct'), 150);
 
             feedbackBox.className = 'feedback-box correct';
-            feedbackTitle.innerHTML = `<span style="color: var(--success)">🎯 吟唱成功！</span> 魔法成功轟擊！`;
-            document.getElementById('battle-log').innerText = `回答正確！成功擊中怪獸！`;
+            feedbackTitle.innerHTML = `<span style="color: var(--success)">🎯 完美施放！</span> 元素核爆在敵方炸裂！`;
+            document.getElementById('battle-log').innerText = `回答正確！成功打出 25 點真實法術傷害！`;
         } else {
-            // 答錯玩家扣 25 HP
             playerHP -= 25;
             if (playerHP < 0) playerHP = 0;
             updateHPBar('player-hp', playerHP);
@@ -621,8 +678,8 @@
             playSound('hurt');
 
             feedbackBox.className = 'feedback-box wrong';
-            feedbackTitle.innerHTML = `<span style="color: var(--danger)">💥 魔法反噬！</span> 公式出錯受傷！`;
-            document.getElementById('battle-log').innerText = `回答錯誤！法術爆發反噬了自己！`;
+            feedbackTitle.innerHTML = `<span style="color: var(--danger)">💥 吟唱中斷！</span> 被強大的代數能量反噬！`;
+            document.getElementById('battle-log').innerText = `回答錯誤！護盾破裂，受到了 25 點反噬！`;
         }
         
         explanationText.innerHTML = currentQuestionData.explain;
@@ -663,12 +720,10 @@
     }
 
     function nextQuestion() {
-        // 如果雙方都還有血，就繼續生成隨機新題目
         if (playerHP > 0 && enemyHP > 0) {
             roundIndex++;
             loadQuestion();
         } else {
-            // 有一方血量歸 0，觸發戰役結算
             showResult();
         }
     }
@@ -682,17 +737,21 @@
         const desc = document.getElementById('result-desc');
         const emoji = document.getElementById('result-emoji');
         
+        let monsterName = "同類項史萊姆";
+        if(currentMode === 'distributive') monsterName = "分配律炎魔";
+        if(currentMode === 'foil') monsterName = "雙項式奇美拉";
+
         if (enemyHP === 0 && playerHP > 0) {
             emoji.innerText = "🏆";
-            title.innerText = "戰役完勝！";
+            title.innerText = "神級施法者！";
             title.style.color = "var(--success)";
-            desc.innerHTML = `你在第 <strong>${roundIndex}</strong> 回合成功將魔物徹底消滅！<br>剩餘生命值：${playerHP} HP。<br>你對隨機多項式的化簡反應非常迅速，滿分！`;
+            desc.innerHTML = `你在第 <strong>${roundIndex}</strong> 回合完全化解了 <strong>${monsterName}</strong> 的攻勢！<br>剩餘生命值：${playerHP} HP。<br>你對雙項式乘法的掌握程度已達到「魔導士」級別！`;
             playSound('victory');
         } else {
             emoji.innerText = "💀";
-            title.innerText = "戰敗，請再接再厲！";
+            title.innerText = "魔法反噬落敗...";
             title.style.color = "var(--danger)";
-            desc.innerHTML = `很遺憾，在第 <strong>${roundIndex}</strong> 回合你的 HP 被魔物清空了。<br>魔物還殘留了 ${enemyHP} HP。<br>再挑戰一次吧，多閱讀解析能幫助你掌握正負號規律！`;
+            desc.innerHTML = `很遺憾，在第 <strong>${roundIndex}</strong> 回合你的 HP 歸零。<br><strong>${monsterName}</strong> 還殘存 ${enemyHP} HP。<br>別氣餒！多項式相乘最容易在「正負號相乘」和「首末項」出錯，再試一次吧！`;
         }
     }
 
