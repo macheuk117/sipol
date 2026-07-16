@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多項式魔法無限對決 RPG</title>
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1e1b4b;
+            --light: #f3f4f6;
+            --wizard-color: #3b82f6;
+            --monster-color: #f97316;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            background: rgba(30, 41, 59, 0.9);
+            border: 3px solid var(--primary);
+            border-radius: 24px;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+            width: 100%;
+            max-width: 600px;
+            padding: 25px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        h1 {
+            color: #c084fc;
+            margin: 0 0 5px 0;
+            font-size: 26px;
+            text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .mode-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: #c084fc;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-btn.active, .mode-btn:hover {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+        }
+
+        .battle-stage {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 16px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fighter {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 40%;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .avatar {
+            font-size: 50px;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));
+            user-select: none;
+        }
+
+        .fighter-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .hp-bar-container {
+            width: 100%;
+            height: 10px;
+            background: #475569;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+        }
+
+        .hp-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--success);
+            transition: width 0.5s ease-out, background-color 0.3s;
+        }
+
+        .vs-sign {
+            font-size: 20px;
+            font-weight: 900;
+            color: #ef4444;
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+            font-style: italic;
+        }
+
+        .damage-popup {
+            position: absolute;
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--danger);
+            text-shadow: 0 0 8px black;
+            animation: floatUp 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.3); opacity: 0; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .shake { animation: shake 0.4s ease-in-out; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; filter: brightness(2) drop-shadow(0 0 15px red); }
+        }
+
+        .blink { animation: blink 0.15s ease-in-out 3; }
+
+        .question-box {
+            background: rgba(30, 41, 59, 0.5);
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .question-title {
+            font-size: 12px;
+            color: #a78bfa;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .question-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+            color: #fff;
+            line-height: 1.4;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 480px) {
+            .options-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .option-btn {
+            background: #1e293b;
+            border: 2px solid #475569;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #f1f5f9;
+            text-align: center;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #2d1b4e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
+        }
+
+        .feedback-box {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid #475569;
+            text-align: left;
+        }
+
+        .feedback-box.correct { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
+        .feedback-box.wrong { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+
+        .feedback-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .explanation {
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .battle-log {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .action-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #7c3aed;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+        }
+
+        .result-screen {
+            display: none;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .result-emoji {
+            font-size: 70px;
+            margin-bottom: 15px;
+            animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container" id="game-container">
+    <div id="game-lobby">
+        <h1>⚔️ 多項式魔法對決 RPG ⚔️</h1>
+        <div class="subtitle">化簡隨機生成的魔法題，直到一方戰敗為止！</div>
+        
+        <div class="mode-container">
+            <button class="mode-btn active" id="mode-addsub" onclick="switchMode('addsub')">同類項加減法</button>
+            <button class="mode-btn" id="mode-dist" onclick="switchMode('distributive')">乘法分配律</button>
+            <button class="mode-btn" id="mode-foil" onclick="switchMode('foil')">雙項式乘法 (FOIL)</button>
+        </div>
+
+        <div class="battle-stage">
+            <div class="fighter" id="player-fighter">
+                <div class="avatar">🧙‍♂️</div>
+                <div class="fighter-name" style="color: #60a5fa;">魔法學徒 (你)</div>
+                <div class="hp-bar-container">
+                    <div class="hp-bar" id="player-hp" style="width: 100%;"></div>
+                </div>
+                <div id="player-fighter-effect"></div>
+            </div>
+
+            <div class="vs-sign">VS</div>
+
+            <div class="fighter" id="enemy-fighter">
+                <div class="avatar" id="enemy-avatar">👾</div>
+                <div class="fighter-name" id="enemy-name" style="color: #fb923c;">同類項史萊姆</div>
+                <div class="hp-bar-container">
+                    <div class="hp-bar" id="enemy-hp" style="width: 100%;"></div>
+                </div>
+                <div id="enemy-fighter-effect"></div>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <div class="question-title" id="q-number">回合 1</div>
+            <p class="question-text" id="q-text">準備戰鬥...</p>
+        </div>
+
+        <div class="options-grid" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-box">
+            <div class="feedback-title" id="feedback-title"></div>
+            <div class="explanation" id="explanation-text"></div>
+        </div>
+
+        <div class="footer">
+            <div class="battle-log" id="battle-log">請選擇正確的魔法咒語。</div>
+            <button class="action-btn" id="next-btn" onclick="nextQuestion()" style="display: none;">下一回合 ➡️</button>
+        </div>
+    </div>
+
+    <div class="result-screen" id="result-screen">
+        <div class="result-emoji" id="result-emoji">🏆</div>
+        <h2 id="result-title" style="font-size: 28px; margin-bottom: 10px; color: #c084fc;">戰役結束！</h2>
+        <p style="font-size: 18px; margin-bottom: 25px;" id="result-desc"></p>
+        <button class="action-btn" onclick="restartGame()">重新挑戰 🔄</button>
+    </div>
+</div>
+
+<script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'hit') { 
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+            gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now); osc.stop(now + 0.15);
+        } else if (type === 'hurt') { 
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now);
+            osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+            gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+            osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'correct') { 
+            osc.type = 'sine'; osc.frequency.setValueAtTime(523.25, now); 
+            osc.frequency.setValueAtTime(659.25, now + 0.08); osc.frequency.setValueAtTime(783.99, now + 0.16); 
+            gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'victory') { 
+            [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
+                const nOsc = audioCtx.createOscillator(); const nGain = audioCtx.createGain();
+                nOsc.connect(nGain); nGain.connect(audioCtx.destination);
+                nOsc.type = 'sine'; nOsc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                nGain.gain.setValueAtTime(0.15, now + idx * 0.1); nGain.gain.linearRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                nOsc.start(now + idx * 0.1); nOsc.stop(now + idx * 0.1 + 0.3);
+            });
+        }
+    }
+
+    let currentMode = 'addsub';
+    let roundIndex = 1;
+    let playerHP = 100;
+    let enemyHP = 100;
+    let answered = false;
+    let currentQuestionData = {};
+
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    function formatTerm(val, variable, isFirst) {
+        if (val === 0) return "";
+        let sign = val > 0 ? "+" : "-";
+        if (isFirst && val > 0) sign = "";
+        let absVal = Math.abs(val);
+        let numStr = absVal === 1 && variable !== "" ? "" : absVal;
+        return `${sign}${numStr}${variable}`;
+    }
+
+    function formatBinomial(coef, constant, varName) {
+        let part1 = "";
+        if (coef === 1) part1 = varName;
+        else if (coef === -1) part1 = "-" + varName;
+        else part1 = coef + varName;
+
+        let part2 = constant > 0 ? " + " + constant : " - " + Math.abs(constant);
+        return `(${part1}${part2})`;
+    }
+
+    function formatTrinomial(cx2, cx, cc) {
+        let part1 = formatTerm(cx2, 'x²', true);
+        let part2 = formatTerm(cx, 'x', part1 === "");
+        let part3 = formatTerm(cc, '', (part1 === "" && part2 === ""));
+        return (part1 + " " + part2 + " " + part3).trim().replace(/\s+/g, ' ');
+    }
+
+    // ⭐ 動態題目生成器 (支援三種模式)
+    function generateRandomQuestion(mode) {
+        let qText = "";
+        let answerStr = "";
+        let explainHtml = "";
+        let wrongAnswers = new Set();
+
+        if (mode === 'addsub') {
+            const type = Math.random() > 0.5 ? 'xy' : 'x2x';
+            const var1 = type === 'xy' ? 'x' : 'x²';
+            const var2 = type === 'xy' ? 'y' : 'x';
+
+            let a1 = 0, a2 = 0, b1 = 0, b2 = 0;
+            while(a1 === 0) a1 = randInt(-8, 8);
+            while(b1 === 0) b1 = randInt(-8, 8);
+            while(a2 === 0) a2 = randInt(-8, 8);
+            while(b2 === 0) b2 = randInt(-8, 8);
+
+            const terms = [
+                { val: a1, v: var1 }, { val: b1, v: var2 },
+                { val: a2, v: var1 }, { val: b2, v: var2 }
+            ].sort(() => Math.random() - 0.5);
+
+            qText = "化簡：";
+            terms.forEach((t, idx) => { qText += formatTerm(t.val, t.v, idx === 0) + " "; });
+
+            const correctVar1 = a1 + a2;
+            const correctVar2 = b1 + b2;
+
+            function buildAns(v1, v2) {
+                if (v1 === 0 && v2 === 0) return "0";
+                let part1 = formatTerm(v1, var1, true);
+                let part2 = formatTerm(v2, var2, part1 === "");
+                return (part1 + " " + part2).trim();
+            }
+
+            answerStr = buildAns(correctVar1, correctVar2);
+
+            while(wrongAnswers.size < 3) {
+                let w1 = correctVar1 + randInt(-3, 3);
+                let w2 = correctVar2 + randInt(-3, 3);
+                let comboErr = Math.random() > 0.7;
+                let wStr = comboErr ? formatTerm(correctVar1 + correctVar2 + randInt(-2,2), var1==='x²'?'x³':var1, true) : buildAns(w1, w2);
+                if (wStr !== answerStr && wStr !== "" && wStr !== "0") wrongAnswers.add(wStr);
+            }
+
+            explainHtml = `<b>魔法解析：</b>尋找同類項進行合併。<br>` +
+                          `• <b>${var1} 的項：</b> ${formatTerm(a1, var1, true)} ${formatTerm(a2, var1, false)} = <b>${formatTerm(correctVar1, var1, true) || '0'}</b><br>` +
+                          `• <b>${var2} 的項：</b> ${formatTerm(b1, var2, true)} ${formatTerm(b2, var2, false)} = <b>${formatTerm(correctVar2, var2, true) || '0'}</b><br>` +
+                          `兩者為不同類項，不能再度相加！最終答案為：<b>${answerStr}</b>`;
+
+        } else if (mode === 'distributive') {
+            let A = 0, B = 0, C = 0;
+            while(A === 0 || Math.abs(A) === 1) A = randInt(-5, 5);
+            while(B === 0) B = randInt(-4, 4);
+            while(C === 0) C = randInt(-8, 8);
+
+            const signStr = C > 0 ? "+" : "-";
+            qText = `展開：${A}(${B === 1 ? '' : B === -1 ? '-' : B}x ${signStr} ${Math.abs(C)})`;
+
+            const ansX = A * B;
+            const ansConst = A * C;
+
+            function buildDistAns(vx, vc) {
+                let part1 = formatTerm(vx, 'x', true);
+                let part2 = formatTerm(vc, '', part1 === "");
+                return (part1 + " " + part2).trim();
+            }
+
+            answerStr = buildDistAns(ansX, ansConst);
+
+            wrongAnswers.add(buildDistAns(ansX, C)); 
+            wrongAnswers.add(buildDistAns(ansX, -ansConst)); 
+            while(wrongAnswers.size < 3) {
+                let wX = ansX + randInt(-2, 2);
+                let wC = ansConst + randInt(-4, 4);
+                let wStr = buildDistAns(wX, wC);
+                if(wStr !== answerStr && wStr !== "") wrongAnswers.add(wStr);
+            }
+
+            explainHtml = `<b>魔法解析：</b>根據分配律，外項 <b>${A}</b> 必須分別乘以括號內每一項！<br>` +
+                          `• 第一項：${A} × (${B}x) = <b>${ansX}x</b><br>` +
+                          `• 第二項：${A} × (${C}) = <b>${ansConst > 0 ? '+' : ''}${ansConst}</b><br>` +
+                          `展開後最終答案為：<b>${answerStr}</b>`;
+        } else {
+            // ⭐ 【雙項式乘法 (FOIL Mode)】
+            let A = 0, B = 0, C = 0, D = 0;
+            while(A === 0) A = randInt(-4, 4);
+            while(B === 0) B = randInt(-5, 5);
+            while(C === 0) C = randInt(-4, 4);
+            while(D === 0) D = randInt(-5, 5);
+
+            qText = `展開並化簡：${formatBinomial(A, B, 'x')}${formatBinomial(C, D, 'x')}`;
+
+            const ansX2 = A * C;
+            const ansX = A * D + B * C;
+            const ansConst = B * D;
+
+            answerStr = formatTrinomial(ansX2, ansX, ansConst);
+
+            // 經典 FOIL 錯誤設置
+            wrongAnswers.add(formatTrinomial(ansX2, -(A * D + B * C), ansConst)); // 中間項正負號相反
+            wrongAnswers.add(formatTrinomial(ansX2, A * D - B * C, ansConst));    // 中間項算錯
+            wrongAnswers.add(formatTrinomial(ansX2, ansX, B + D));              // 常數相加而非相乘
+            wrongAnswers.add(formatTrinomial(ansX2, 0, ansConst));              // 漏掉中間項
+
+            while(wrongAnswers.size < 3) {
+                let wX2 = ansX2 + randInt(-2, 2); if(wX2 === 0) wX2 = 1;
+                let wX = ansX + randInt(-4, 4);
+                let wConst = ansConst + randInt(-4, 4);
+                let wStr = formatTrinomial(wX2, wX, wConst);
+                if(wStr !== answerStr && wStr !== "") wrongAnswers.add(wStr);
+            }
+
+            explainHtml = `<b>魔法解析：雙項式乘法 (FOIL 展開法)</b><br>` +
+                          `原式：${formatBinomial(A, B, 'x')}${formatBinomial(C, D, 'x')}<br>` +
+                          `• <b>First (首項相乘)：</b> ${formatTerm(A, 'x', true)} × ${formatTerm(C, 'x', true)} = <b>${formatTerm(ansX2, 'x²', true)}</b><br>` +
+                          `• <b>Outer (外項相乘)：</b> ${formatTerm(A, 'x', true)} × (${D}) = <b>${formatTerm(A*D, 'x', true)}</b><br>` +
+                          `• <b>Inner (內項相乘)：</b> (${B}) × ${formatTerm(C, 'x', true)} = <b>${formatTerm(B*C, 'x', true)}</b><br>` +
+                          `• <b>Last (末項相乘)：</b> (${B}) × (${D}) = <b>${formatTerm(ansConst, '', true)}</b><br>` +
+                          `合併同類項（外項 + 內項）：<br>` +
+                          `${formatTerm(A*D, 'x', true)} ${formatTerm(B*C, 'x', false)} = <b>${formatTerm(ansX, 'x', true) || '0'}</b><br>` +
+                          `最終答案：<b>${answerStr}</b>`;
+        }
+
+        let allOptions = Array.from(wrongAnswers);
+        allOptions.push(answerStr);
+        allOptions.sort(() => Math.random() - 0.5);
+
+        return {
+            q: qText,
+            options: allOptions,
+            correct: allOptions.indexOf(answerStr),
+            explain: explainHtml
+        };
+    }
+
+    function initGame() {
+        roundIndex = 1;
+        playerHP = 100;
+        enemyHP = 100;
+        answered = false;
+
+        document.getElementById('player-hp').style.width = '100%';
+        document.getElementById('enemy-hp').style.width = '100%';
+        document.getElementById('player-hp').style.backgroundColor = 'var(--success)';
+        document.getElementById('enemy-hp').style.backgroundColor = 'var(--success)';
+
+        let monsterName = "同類項史萊姆";
+        let monsterAvatar = "👾";
+        if (currentMode === 'distributive') {
+            monsterName = "分配律炎魔";
+            monsterAvatar = "👹";
+        } else if (currentMode === 'foil') {
+            monsterName = "雙項式奇美拉";
+            monsterAvatar = "🦁";
+        }
+
+        document.getElementById('enemy-name').innerText = monsterName;
+        document.getElementById('enemy-avatar').innerText = monsterAvatar;
+
+        document.getElementById('game-lobby').style.display = 'block';
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('feedback-box').style.display = 'none';
+        document.getElementById('battle-log').innerText = "對決開始！使用最高階的代數法術擊敗奇美拉吧！";
+
+        loadQuestion();
+    }
+
+    function switchMode(mode) {
+        if (currentMode === mode) return;
+        currentMode = mode;
+        document.getElementById('mode-addsub').classList.toggle('active', mode === 'addsub');
+        document.getElementById('mode-dist').classList.toggle('active', mode === 'distributive');
+        document.getElementById('mode-foil').classList.toggle('active', mode === 'foil');
+        initGame();
+    }
+
+    function loadQuestion() {
+        answered = false;
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('feedback-box').style.display = 'none';
+        
+        currentQuestionData = generateRandomQuestion(currentMode);
+        
+        document.getElementById('q-number').innerText = `回合 ${roundIndex} (生死鬥)`;
+        document.getElementById('q-text').innerHTML = currentQuestionData.q;
+        
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+        
+        currentQuestionData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = opt;
+            btn.onclick = () => checkAnswer(index);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIndex) {
+        if (answered) return;
+        answered = true;
+        
+        const isCorrect = selectedIndex === currentQuestionData.correct;
+        const optionsButtons = document.querySelectorAll('.option-btn');
+        
+        optionsButtons.forEach((btn, index) => {
+            btn.disabled = true;
+            if (index === currentQuestionData.correct) {
+                btn.style.backgroundColor = '#065f46';
+                btn.style.borderColor = 'var(--success)';
+            } else if (index === selectedIndex) {
+                btn.style.backgroundColor = '#7f1d1d';
+                btn.style.borderColor = 'var(--danger)';
+            }
+        });
+
+        const feedbackBox = document.getElementById('feedback-box');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const explanationText = document.getElementById('explanation-text');
+        
+        if (isCorrect) {
+            enemyHP -= 25;
+            if (enemyHP < 0) enemyHP = 0;
+            updateHPBar('enemy-hp', enemyHP);
+            triggerDamageEffect('enemy-fighter', '-25 HP');
+            triggerVFX('enemy-fighter', 'blink');
+            playSound('hit');
+            setTimeout(() => playSound('correct'), 150);
+
+            feedbackBox.className = 'feedback-box correct';
+            feedbackTitle.innerHTML = `<span style="color: var(--success)">🎯 完美施放！</span> 元素核爆在敵方炸裂！`;
+            document.getElementById('battle-log').innerText = `回答正確！成功打出 25 點真實法術傷害！`;
+        } else {
+            playerHP -= 25;
+            if (playerHP < 0) playerHP = 0;
+            updateHPBar('player-hp', playerHP);
+            triggerDamageEffect('player-fighter', '-25 HP');
+            triggerVFX('player-fighter', 'blink');
+            triggerVFX('game-container', 'shake');
+            playSound('hurt');
+
+            feedbackBox.className = 'feedback-box wrong';
+            feedbackTitle.innerHTML = `<span style="color: var(--danger)">💥 吟唱中斷！</span> 被強大的代數能量反噬！`;
+            document.getElementById('battle-log').innerText = `回答錯誤！護盾破裂，受到了 25 點反噬！`;
+        }
+        
+        explanationText.innerHTML = currentQuestionData.explain;
+        feedbackBox.style.display = 'block';
+        document.getElementById('next-btn').style.display = 'inline-block';
+    }
+
+    function updateHPBar(id, hp) {
+        const bar = document.getElementById(id);
+        bar.style.width = hp + '%';
+        if (hp <= 25) {
+            bar.style.backgroundColor = 'var(--danger)';
+        } else if (hp <= 50) {
+            bar.style.backgroundColor = '#fb923c';
+        }
+    }
+
+    function triggerDamageEffect(parentId, text) {
+        const container = document.getElementById(parentId + '-effect');
+        if (container) {
+            container.innerHTML = '';
+            const popup = document.createElement('div');
+            popup.className = 'damage-popup';
+            popup.innerText = text;
+            popup.style.top = '10px';
+            container.appendChild(popup);
+        }
+    }
+
+    function triggerVFX(id, cssClass) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove(cssClass);
+            void el.offsetWidth; 
+            el.classList.add(cssClass);
+            setTimeout(() => el.classList.remove(cssClass), 500);
+        }
+    }
+
+    function nextQuestion() {
+        if (playerHP > 0 && enemyHP > 0) {
+            roundIndex++;
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('game-lobby').style.display = 'none';
+        const resultScreen = document.getElementById('result-screen');
+        resultScreen.style.display = 'block';
+        
+        const title = document.getElementById('result-title');
+        const desc = document.getElementById('result-desc');
+        const emoji = document.getElementById('result-emoji');
+        
+        let monsterName = "同類項史萊姆";
+        if(currentMode === 'distributive') monsterName = "分配律炎魔";
+        if(currentMode === 'foil') monsterName = "雙項式奇美拉";
+
+        if (enemyHP === 0 && playerHP > 0) {
+            emoji.innerText = "🏆";
+            title.innerText = "神級施法者！";
+            title.style.color = "var(--success)";
+            desc.innerHTML = `你在第 <strong>${roundIndex}</strong> 回合完全化解了 <strong>${monsterName}</strong> 的攻勢！<br>剩餘生命值：${playerHP} HP。<br>你對雙項式乘法的掌握程度已達到「魔導士」級別！`;
+            playSound('victory');
+        } else {
+            emoji.innerText = "💀";
+            title.innerText = "魔法反噬落敗...";
+            title.style.color = "var(--danger)";
+            desc.innerHTML = `很遺憾，在第 <strong>${roundIndex}</strong> 回合你的 HP 歸零。<br><strong>${monsterName}</strong> 還殘存 ${enemyHP} HP。<br>別氣餒！多項式相乘最容易在「正負號相乘」和「首末項」出錯，再試一次吧！`;
+        }
+    }
+
+    function restartGame() {
+        initGame();
+    }
+
+    window.onload = initGame;
+</script>
+
+</body>
+</html>
